@@ -188,4 +188,4 @@ def render_mes(container, d, label, vol, efgh, prazo, dim_produto, cores_rating=
         c2.metric("% EFGH (ruim)", f"{efgh:.1f}%" if efgh is not None else "—")
         c3.metric("Prazo médio", f"{prazo:.1f}x")
         fig_p = chart_produto_prazo(d, dim_produto, '', cores_rating=cores_rating)
-        st.plotly_chart(fig_p, use_container_width=True)
+        st.plotly_chart(fig_p, width='stretch')

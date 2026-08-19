@@ -51,7 +51,7 @@ if comparar:
 fig, df_breach = build_chuveirinho(
     df_vint, TRIGGER_MERCH, TRIGGER_MERCH_TETO, mes_sel_label, mes_comp_label
 )
-st.plotly_chart(fig, use_container_width=True)
+st.plotly_chart(fig, width='stretch')
 st.caption("MOB 2-3 fica fora do alerta de breach: base pequena faz o % oscilar muito (ruído).")
 
 resumo = breach_summary(df_breach, labels)
