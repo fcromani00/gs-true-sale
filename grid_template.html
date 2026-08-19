@@ -1,0 +1,370 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<title>GS — Chuveirinho</title>
+<script src="__PLOTLY_SRC__"></script>
+<style>
+  * { box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+    margin: 0; padding: 24px; background: #fafafa; color: #1a1a1a;
+  }
+  .header { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; }
+  h1 { font-size: 22px; margin: 0; }
+  .toggle button {
+    padding: 8px 18px; border: 1px solid #ccc; background: #fff; cursor: pointer;
+    font-size: 14px; border-radius: 6px 0 0 6px;
+  }
+  .toggle button:last-child { border-radius: 0 6px 6px 0; border-left: none; }
+  .toggle button.active { background: #1a1a1a; color: #fff; border-color: #1a1a1a; }
+  .caption { color: #666; font-size: 13px; margin: 6px 0 14px; }
+  .banner { padding: 10px 14px; border-radius: 6px; font-size: 14px; margin: 10px 0 18px; }
+  .banner.warn { background: #fff3cd; border: 1px solid #f6c343; }
+  .banner.ok { background: #e6f4ea; border: 1px solid #1a7f37; }
+  .banner.info { background: #e8f0fe; border: 1px solid #4a90d9; }
+  hr { border: none; border-top: 1px solid #ddd; margin: 22px 0; }
+  .controls { display: flex; align-items: center; gap: 24px; flex-wrap: wrap; margin-bottom: 20px; font-size: 14px; }
+  .controls select { padding: 6px 10px; font-size: 14px; border-radius: 4px; border: 1px solid #ccc; margin-left: 6px; }
+  .controls label { display: flex; align-items: center; }
+  .cols { display: flex; gap: 24px; flex-wrap: wrap; }
+  .col { flex: 1 1 420px; min-width: 340px; }
+  .col h3 { margin: 0 0 10px; }
+  .metrics { display: flex; gap: 12px; margin-bottom: 10px; }
+  .metric { flex: 1; background: #fff; border: 1px solid #e5e5e5; border-radius: 6px; padding: 10px 12px; }
+  .metric-label { font-size: 12px; color: #888; }
+  .metric-value { font-size: 20px; font-weight: 600; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>🚿 GS — Chuveirinho</h1>
+  <div class="toggle">
+    <button id="btnMerch" class="active">Merchant</button>
+    <button id="btnCons">Consumer</button>
+  </div>
+</div>
+<p class="caption">Veja qual safra está pior no gráfico, selecione o mês abaixo e entenda por quê.</p>
+
+<div id="chuveirinho" style="width:100%"></div>
+<p class="caption">MOB 2-3 fica fora do alerta de breach: base pequena faz o % oscilar muito (ruído).</p>
+<div id="breachBanner" class="banner"></div>
+
+<hr/>
+
+<div class="controls">
+  <label>📌 Mês para analisar <select id="selMes"></select></label>
+  <label><input type="checkbox" id="chkComparar"/>&nbsp;Comparar com outro mês</label>
+  <label id="compBlock" style="display:none">🆚 Comparar com <select id="selComp"></select></label>
+</div>
+
+<div class="cols">
+  <div class="col">
+    <h3 id="labelA"></h3>
+    <div class="metrics">
+      <div class="metric"><div class="metric-label">Volume</div><div class="metric-value" id="volA"></div></div>
+      <div class="metric"><div class="metric-label">% EFGH (ruim)</div><div class="metric-value" id="efghA"></div></div>
+      <div class="metric"><div class="metric-label">Prazo médio</div><div class="metric-value" id="prazoA"></div></div>
+    </div>
+    <div id="chartA"></div>
+  </div>
+  <div class="col" id="compareCol" style="display:none">
+    <h3 id="labelB"></h3>
+    <div class="metrics">
+      <div class="metric"><div class="metric-label">Volume</div><div class="metric-value" id="volB"></div></div>
+      <div class="metric"><div class="metric-label">% EFGH (ruim)</div><div class="metric-value" id="efghB"></div></div>
+      <div class="metric"><div class="metric-label">Prazo médio</div><div class="metric-value" id="prazoB"></div></div>
+    </div>
+    <div id="chartB"></div>
+  </div>
+</div>
+
+<div id="insightBox" class="banner info" style="display:none">
+  <span id="insight"></span>
+</div>
+
+<p class="caption">Fonte: meli-bi-data.WHOWNER.BT_MP_CREDITS_CREDIT_DETAIL | GS (bpartner=571062534)</p>
+
+<script>
+const DATA = __DATA_JSON__;
+
+const PT_MESES = ["", "Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
+function labelPt(m) {
+  const [y, mo] = m.split("-");
+  return PT_MESES[parseInt(mo, 10)] + "/" + y.slice(2);
+}
+
+function grupoRating(r) {
+  if (["A", "B", "C"].includes(r)) return "ABC (bom)";
+  if (r === "D") return "D";
+  if (["E", "F", "G", "H"].includes(r)) return "EFGH (ruim)";
+  return "Outro";
+}
+
+const EXPRESS = ["EXPRESS_POINT_MLB_1", "EXPRESS_MA_MLB", "EXPRESS_MLB_1", "BABY_EXPRESS_POINT_MLB_1"];
+const CURTO   = ["MER_MLB_MA", "POINT_MLB_1", "MLB_EO_ONLINE", "MER_MLB_SFO", "POINT_MLB_FO_RNV", "MER_MLB_FO_RNV"];
+const LONGO   = ["MER_MLB_1", "POINT_MLB_STD", "FUNDING_MLB", "CHECKOUT_MLB"];
+function tipoProdutoMerch(p) {
+  if (EXPRESS.includes(p)) return "Express (1 parcela)";
+  if (CURTO.includes(p)) return "Parcelado curto (≤8x)";
+  if (LONGO.includes(p)) return "Parcelado longo (8x+)";
+  return "Outro";
+}
+
+const CORES_RATING = { "ABC (bom)": "#1a7f37", "D": "#f6c343", "EFGH (ruim)": "#d1242f", "Outro": "#aaaaaa" };
+
+function triggerVal(trig, mob) {
+  const v = trig[String(mob)];
+  return v !== undefined ? v : trig.teto;
+}
+
+function mesesDisponiveis(asset) {
+  const src = asset === "merch" ? DATA.merch_detail : DATA.cons_product;
+  return [...new Set(src.map(r => r.m))].sort();
+}
+
+function buildChuveirinhoFig(asset, mesSelLabel, mesCompLabel) {
+  const vint = asset === "merch" ? DATA.vint_merch : DATA.vint_cons;
+  const trig = asset === "merch" ? DATA.trigger_merch : DATA.trigger_cons;
+  const maxMob = Math.max(...vint.map(r => r.mob));
+
+  const byMonth = {};
+  for (const r of vint) {
+    const lbl = labelPt(r.m);
+    (byMonth[lbl] = byMonth[lbl] || []).push(r);
+  }
+
+  const traces = [];
+  for (const lbl in byMonth) {
+    if (lbl === mesSelLabel || lbl === mesCompLabel) continue;
+    const sub = byMonth[lbl].slice().sort((a, b) => a.mob - b.mob);
+    traces.push({
+      type: "scatter", mode: "lines", x: sub.map(r => r.mob), y: sub.map(r => r.o),
+      line: { color: "#cccccc", width: 1 }, opacity: 0.7, name: lbl, showlegend: false, hoverinfo: "skip"
+    });
+  }
+  if (mesCompLabel && byMonth[mesCompLabel]) {
+    const sub = byMonth[mesCompLabel].slice().sort((a, b) => a.mob - b.mob);
+    traces.push({
+      type: "scatter", mode: "lines", x: sub.map(r => r.mob), y: sub.map(r => r.o),
+      line: { color: "#1a7f37", width: 2.5, dash: "dash" }, name: `${mesCompLabel} (comparação)`
+    });
+  }
+  if (byMonth[mesSelLabel]) {
+    const sub = byMonth[mesSelLabel].slice().sort((a, b) => a.mob - b.mob);
+    traces.push({
+      type: "scatter", mode: "lines+markers", x: sub.map(r => r.mob), y: sub.map(r => r.o),
+      line: { color: "#d1242f", width: 3.5 }, marker: { size: 5 }, name: `${mesSelLabel} (selecionado)`
+    });
+  }
+
+  const mobRange = [];
+  for (let m = 2; m <= maxMob; m++) mobRange.push(m);
+  traces.push({
+    type: "scatter", mode: "lines", x: mobRange, y: mobRange.map(m => triggerVal(trig, m)),
+    line: { color: "black", width: 2, dash: "dot" }, name: `Trigger (teto ${trig.teto}%)`
+  });
+
+  const breachX = [], breachY = [];
+  for (const r of vint) {
+    if (r.mob >= 4 && r.o > triggerVal(trig, r.mob)) { breachX.push(r.mob); breachY.push(r.o); }
+  }
+  if (breachX.length) {
+    traces.push({
+      type: "scatter", mode: "markers", x: breachX, y: breachY,
+      marker: { symbol: "x", size: 9, color: "#d1242f", line: { width: 2 } }, name: "Breach (rompeu trigger)"
+    });
+  }
+
+  return {
+    data: traces,
+    layout: {
+      height: 420, margin: { t: 20, b: 10 },
+      xaxis: { title: "MOB (meses desde a originação)" },
+      yaxis: { title: "OVER 30 (%)" },
+      legend: { orientation: "h", y: -0.2 },
+      hovermode: "x unified"
+    }
+  };
+}
+
+function breachSummary(asset) {
+  const vint = asset === "merch" ? DATA.vint_merch : DATA.vint_cons;
+  const trig = asset === "merch" ? DATA.trigger_merch : DATA.trigger_cons;
+  const minMobByMonth = {};
+  for (const r of vint) {
+    if (r.mob >= 4 && r.o > triggerVal(trig, r.mob)) {
+      if (!(r.m in minMobByMonth) || r.mob < minMobByMonth[r.m]) minMobByMonth[r.m] = r.mob;
+    }
+  }
+  const months = Object.keys(minMobByMonth).sort();
+  if (months.length === 0) return null;
+  return months.map(m => `${labelPt(m)} (MOB ${minMobByMonth[m]})`).join(", ");
+}
+
+function statsMerch(mesStr) {
+  const rows = DATA.merch_detail.filter(r => r.m === mesStr);
+  const vol = rows.reduce((s, r) => s + r.v, 0);
+  const prazo = vol > 0 ? rows.reduce((s, r) => s + r.t * r.v, 0) / vol : 0;
+  const volEfgh = rows.filter(r => grupoRating(r.r) === "EFGH (ruim)").reduce((s, r) => s + r.v, 0);
+  const efgh = vol > 0 ? volEfgh / vol * 100 : 0;
+  return { vol, efgh, prazo, rows };
+}
+
+function statsCons(mesStr) {
+  const rowsP = DATA.cons_product.filter(r => r.m === mesStr);
+  const vol = rowsP.reduce((s, r) => s + r.v, 0);
+  const prazo = vol > 0 ? rowsP.reduce((s, r) => s + r.t * r.v, 0) / vol : 0;
+  const rowsR = DATA.cons_rating.filter(r => r.m === mesStr);
+  const volR = rowsR.reduce((s, r) => s + r.v, 0);
+  const volEfgh = rowsR.filter(r => grupoRating(r.r) === "EFGH (ruim)").reduce((s, r) => s + r.v, 0);
+  const efgh = volR > 0 ? volEfgh / volR * 100 : 0;
+  return { vol, efgh, prazo, rows: rowsP };
+}
+
+function insightText(volA, efghA, prazoA, labelA, volB, efghB, prazoB, labelB) {
+  const dPrazo = prazoA - prazoB;
+  const dEfgh = (efghA != null && efghB != null) ? (efghA - efghB) : 0;
+  const partes = [];
+  if (Math.abs(dPrazo) >= 0.5) {
+    const maior = dPrazo > 0 ? labelA : labelB;
+    partes.push(`prazo médio <b>${Math.abs(dPrazo).toFixed(1)}x maior em ${maior}</b>`);
+  }
+  if (efghA != null && Math.abs(dEfgh) >= 3) {
+    const maior = dEfgh > 0 ? labelA : labelB;
+    partes.push(`<b>${Math.abs(dEfgh).toFixed(0)}pp mais volume em rating ruim (EFGH) em ${maior}</b>`);
+  }
+  if (partes.length === 0) {
+    return `${labelA} e ${labelB} têm perfil de rating e prazo parecidos — a diferença no chuveirinho provavelmente vem de outro fator (volume, sazonalidade).`;
+  }
+  return "Principal diferença: " + partes.join(" e ") +
+    ". Prazo mais longo mantém o saldo em atraso mais tempo no book; mais EFGH aumenta a chance de " +
+    "inadimplência — combinados, explicam a curva mais alta no chuveirinho.";
+}
+
+function buildProdutoPrazoFig(rows, withRating) {
+  const traces = [];
+  const getP = withRating ? (r => tipoProdutoMerch(r.p)) : (r => r.p);
+  const dimVals = [...new Set(rows.map(getP))];
+
+  if (withRating) {
+    for (const g of ["ABC (bom)", "D", "EFGH (ruim)"]) {
+      const ys = dimVals.map(prod => rows.filter(r => getP(r) === prod && grupoRating(r.r) === g)
+        .reduce((s, r) => s + r.v, 0));
+      if (ys.some(y => y > 0)) {
+        traces.push({ type: "bar", x: dimVals, y: ys, name: g, marker: { color: CORES_RATING[g] } });
+      }
+    }
+  } else {
+    const ys = dimVals.map(prod => rows.filter(r => getP(r) === prod).reduce((s, r) => s + r.v, 0));
+    traces.push({ type: "bar", x: dimVals, y: ys, name: "Volume", marker: { color: "#4a90d9" } });
+  }
+
+  const prazoY = dimVals.map(v => {
+    const sub = rows.filter(r => getP(r) === v);
+    const vol = sub.reduce((s, r) => s + r.v, 0);
+    return vol > 0 ? sub.reduce((s, r) => s + r.t * r.v, 0) / vol : 0;
+  });
+  traces.push({
+    type: "scatter", mode: "markers+text", x: dimVals, y: prazoY, yaxis: "y2",
+    marker: { size: 14, color: "black", symbol: "diamond" },
+    text: prazoY.map(v => v.toFixed(1) + "x"), textposition: "top center", name: "Prazo médio WA"
+  });
+
+  return {
+    data: traces,
+    layout: {
+      barmode: "stack", height: 340, margin: { t: 20, b: 10, l: 50, r: 50 },
+      legend: { orientation: "h", y: -0.3 },
+      yaxis: { title: "Volume (R$M)" },
+      yaxis2: { title: "Prazo médio (parcelas)", overlaying: "y", side: "right", range: [0, 20] }
+    }
+  };
+}
+
+const state = { asset: "merch", mesSel: null, comparar: false, mesComp: null };
+const PLOT_CFG = { displayModeBar: false, responsive: true };
+
+function populateSelects() {
+  const meses = mesesDisponiveis(state.asset);
+  const selMes = document.getElementById("selMes");
+  const selComp = document.getElementById("selComp");
+  selMes.innerHTML = meses.map(m => `<option value="${m}" ${m === state.mesSel ? "selected" : ""}>${labelPt(m)}</option>`).join("");
+  selComp.innerHTML = meses.filter(m => m !== state.mesSel)
+    .map(m => `<option value="${m}" ${m === state.mesComp ? "selected" : ""}>${labelPt(m)}</option>`).join("");
+}
+
+function renderMesBlock(suffix, label, stats, withRating) {
+  document.getElementById("label" + suffix).textContent = label;
+  document.getElementById("vol" + suffix).textContent = "R$" + stats.vol.toFixed(1) + "M";
+  document.getElementById("efgh" + suffix).textContent = stats.efgh.toFixed(1) + "%";
+  document.getElementById("prazo" + suffix).textContent = stats.prazo.toFixed(1) + "x";
+  const fig = buildProdutoPrazoFig(stats.rows, withRating);
+  Plotly.react("chart" + suffix, fig.data, fig.layout, PLOT_CFG);
+}
+
+function renderAll() {
+  const mesSelLabel = labelPt(state.mesSel);
+  const mesCompLabel = state.comparar ? labelPt(state.mesComp) : null;
+
+  const figV = buildChuveirinhoFig(state.asset, mesSelLabel, mesCompLabel);
+  Plotly.react("chuveirinho", figV.data, figV.layout, PLOT_CFG);
+
+  const resumo = breachSummary(state.asset);
+  const banner = document.getElementById("breachBanner");
+  if (resumo) {
+    banner.className = "banner warn";
+    banner.innerHTML = `⚠️ <b>Vintages que romperam o trigger:</b> ${resumo}`;
+  } else {
+    banner.className = "banner ok";
+    banner.innerHTML = `✅ Nenhuma vintage rompeu o trigger até o momento.`;
+  }
+
+  document.getElementById("compareCol").style.display = state.comparar ? "" : "none";
+  document.getElementById("compBlock").style.display = state.comparar ? "" : "none";
+
+  const withRating = state.asset === "merch";
+  const statsFn = state.asset === "merch" ? statsMerch : statsCons;
+
+  const a = statsFn(state.mesSel);
+  renderMesBlock("A", mesSelLabel, a, withRating);
+
+  const insightBox = document.getElementById("insightBox");
+  if (state.comparar) {
+    const b = statsFn(state.mesComp);
+    renderMesBlock("B", mesCompLabel, b, withRating);
+    document.getElementById("insight").innerHTML = insightText(
+      a.vol, a.efgh, a.prazo, mesSelLabel, b.vol, b.efgh, b.prazo, mesCompLabel
+    );
+    insightBox.style.display = "";
+  } else {
+    insightBox.style.display = "none";
+  }
+}
+
+function initAsset(asset) {
+  state.asset = asset;
+  const meses = mesesDisponiveis(asset);
+  state.mesSel = meses[meses.length - 1];
+  state.mesComp = meses.length >= 4 ? meses[meses.length - 4] : meses[0];
+  populateSelects();
+  renderAll();
+}
+
+function setActiveAssetButton(asset) {
+  document.getElementById("btnMerch").classList.toggle("active", asset === "merch");
+  document.getElementById("btnCons").classList.toggle("active", asset === "cons");
+}
+
+document.getElementById("btnMerch").onclick = () => { setActiveAssetButton("merch"); initAsset("merch"); };
+document.getElementById("btnCons").onclick = () => { setActiveAssetButton("cons"); initAsset("cons"); };
+document.getElementById("selMes").onchange = (e) => { state.mesSel = e.target.value; populateSelects(); renderAll(); };
+document.getElementById("chkComparar").onchange = (e) => { state.comparar = e.target.checked; renderAll(); };
+document.getElementById("selComp").onchange = (e) => { state.mesComp = e.target.value; renderAll(); };
+
+initAsset("merch");
+</script>
+
+</body>
+</html>
