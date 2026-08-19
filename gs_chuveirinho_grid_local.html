@@ -141,21 +141,24 @@ function buildChuveirinhoFig(asset, mesSelLabel, mesCompLabel) {
     const sub = byMonth[lbl].slice().sort((a, b) => a.mob - b.mob);
     traces.push({
       type: "scatter", mode: "lines", x: sub.map(r => r.mob), y: sub.map(r => r.o),
-      line: { color: "#cccccc", width: 1 }, opacity: 0.7, name: lbl, showlegend: false, hoverinfo: "skip"
+      line: { color: "#cccccc", width: 1.3 }, opacity: 0.75, name: lbl, showlegend: false,
+      hovertemplate: `<b>${lbl}</b><br>MOB %{x}<br>OVER 30: %{y:.1f}%<extra></extra>`
     });
   }
   if (mesCompLabel && byMonth[mesCompLabel]) {
     const sub = byMonth[mesCompLabel].slice().sort((a, b) => a.mob - b.mob);
     traces.push({
       type: "scatter", mode: "lines", x: sub.map(r => r.mob), y: sub.map(r => r.o),
-      line: { color: "#1a7f37", width: 2.5, dash: "dash" }, name: `${mesCompLabel} (comparação)`
+      line: { color: "#1a7f37", width: 3, dash: "dash" }, name: `${mesCompLabel} (comparação)`,
+      hovertemplate: `<b>${mesCompLabel} (comparação)</b><br>MOB %{x}<br>OVER 30: %{y:.1f}%<extra></extra>`
     });
   }
   if (byMonth[mesSelLabel]) {
     const sub = byMonth[mesSelLabel].slice().sort((a, b) => a.mob - b.mob);
     traces.push({
       type: "scatter", mode: "lines+markers", x: sub.map(r => r.mob), y: sub.map(r => r.o),
-      line: { color: "#d1242f", width: 3.5 }, marker: { size: 5 }, name: `${mesSelLabel} (selecionado)`
+      line: { color: "#d1242f", width: 4 }, marker: { size: 6 }, name: `${mesSelLabel} (selecionado)`,
+      hovertemplate: `<b>${mesSelLabel} (selecionado)</b><br>MOB %{x}<br>OVER 30: %{y:.1f}%<extra></extra>`
     });
   }
 
@@ -166,25 +169,28 @@ function buildChuveirinhoFig(asset, mesSelLabel, mesCompLabel) {
     line: { color: "black", width: 2, dash: "dot" }, name: `Trigger (teto ${trig.teto}%)`
   });
 
-  const breachX = [], breachY = [];
+  const breachX = [], breachY = [], breachLbl = [];
   for (const r of vint) {
-    if (r.mob >= 4 && r.o > triggerVal(trig, r.mob)) { breachX.push(r.mob); breachY.push(r.o); }
+    if (r.mob >= 4 && r.o > triggerVal(trig, r.mob)) {
+      breachX.push(r.mob); breachY.push(r.o); breachLbl.push(labelPt(r.m));
+    }
   }
   if (breachX.length) {
     traces.push({
-      type: "scatter", mode: "markers", x: breachX, y: breachY,
-      marker: { symbol: "x", size: 9, color: "#d1242f", line: { width: 2 } }, name: "Breach (rompeu trigger)"
+      type: "scatter", mode: "markers", x: breachX, y: breachY, customdata: breachLbl,
+      marker: { symbol: "x", size: 9, color: "#d1242f", line: { width: 2 } }, name: "Breach (rompeu trigger)",
+      hovertemplate: "<b>%{customdata}</b><br>MOB %{x}<br>OVER 30: %{y:.1f}%<extra>Breach</extra>"
     });
   }
 
   return {
     data: traces,
     layout: {
-      height: 420, margin: { t: 20, b: 10 },
+      height: 650, margin: { t: 20, b: 10 },
       xaxis: { title: "MOB (meses desde a originação)" },
-      yaxis: { title: "OVER 30 (%)" },
-      legend: { orientation: "h", y: -0.2 },
-      hovermode: "x unified"
+      yaxis: { title: "OVER 30 (%)", automargin: true },
+      legend: { orientation: "h", y: -0.15 },
+      hovermode: "closest"
     }
   };
 }

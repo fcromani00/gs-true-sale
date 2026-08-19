@@ -52,8 +52,9 @@ def build_chuveirinho(df_vint, trigger_dict, teto, label_atual, label_comp, min_
         sub = sub.sort_values('MOB')
         fig.add_trace(go.Scatter(
             x=sub['MOB'], y=sub['OVER_30'], mode='lines',
-            line=dict(color='#cccccc', width=1), opacity=0.7,
-            name=lbl, showlegend=False, hoverinfo='skip'
+            line=dict(color='#cccccc', width=1.3), opacity=0.75,
+            name=lbl, showlegend=False,
+            hovertemplate=f"<b>{lbl}</b><br>MOB %{{x}}<br>OVER 30: %{{y:.1f}}%<extra></extra>"
         ))
 
     if label_comp:
@@ -61,16 +62,18 @@ def build_chuveirinho(df_vint, trigger_dict, teto, label_atual, label_comp, min_
         if not sub_comp.empty:
             fig.add_trace(go.Scatter(
                 x=sub_comp['MOB'], y=sub_comp['OVER_30'], mode='lines',
-                line=dict(color='#1a7f37', width=2.5, dash='dash'),
-                name=f'{label_comp} (comparação)'
+                line=dict(color='#1a7f37', width=3, dash='dash'),
+                name=f'{label_comp} (comparação)',
+                hovertemplate=f"<b>{label_comp} (comparação)</b><br>MOB %{{x}}<br>OVER 30: %{{y:.1f}}%<extra></extra>"
             ))
 
     sub_atual = df_vint[df_vint['label'] == label_atual].sort_values('MOB')
     if not sub_atual.empty:
         fig.add_trace(go.Scatter(
             x=sub_atual['MOB'], y=sub_atual['OVER_30'], mode='lines+markers',
-            line=dict(color='#d1242f', width=3.5), marker=dict(size=5),
-            name=f'{label_atual} (selecionado)'
+            line=dict(color='#d1242f', width=4), marker=dict(size=6),
+            name=f'{label_atual} (selecionado)',
+            hovertemplate=f"<b>{label_atual} (selecionado)</b><br>MOB %{{x}}<br>OVER 30: %{{y:.1f}}%<extra></extra>"
         ))
 
     fig.add_trace(go.Scatter(
@@ -83,16 +86,18 @@ def build_chuveirinho(df_vint, trigger_dict, teto, label_atual, label_comp, min_
     if not df_breach.empty:
         fig.add_trace(go.Scatter(
             x=df_breach['MOB'], y=df_breach['OVER_30'], mode='markers',
+            customdata=df_breach['label'],
             marker=dict(symbol='x', size=9, color='#d1242f', line=dict(width=2)),
-            name='Breach (rompeu trigger)'
+            name='Breach (rompeu trigger)',
+            hovertemplate="<b>%{customdata}</b><br>MOB %{x}<br>OVER 30: %{y:.1f}%<extra>Breach</extra>"
         ))
 
     fig.update_layout(
-        height=420, margin=dict(t=20, b=10),
+        height=650, margin=dict(t=20, b=10),
         xaxis_title='MOB (meses desde a originação)',
         yaxis_title='OVER 30 (%)',
-        legend=dict(orientation='h', y=-0.2),
-        hovermode='x unified'
+        legend=dict(orientation='h', y=-0.15),
+        hovermode='closest'
     )
     return fig, df_breach
 
