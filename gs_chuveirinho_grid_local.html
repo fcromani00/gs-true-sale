@@ -128,6 +128,7 @@ function buildChuveirinhoFig(asset, mesSelLabel, mesCompLabel) {
   const vint = asset === "merch" ? DATA.vint_merch : DATA.vint_cons;
   const trig = asset === "merch" ? DATA.trigger_merch : DATA.trigger_cons;
   const maxMob = Math.max(...vint.map(r => r.mob));
+  const minMob = Math.min(...vint.map(r => r.mob));
 
   const byMonth = {};
   for (const r of vint) {
@@ -165,8 +166,17 @@ function buildChuveirinhoFig(asset, mesSelLabel, mesCompLabel) {
   const mobRange = [];
   for (let m = 2; m <= maxMob; m++) mobRange.push(m);
   traces.push({
-    type: "scatter", mode: "lines", x: mobRange, y: mobRange.map(m => triggerVal(trig, m)),
-    line: { color: "black", width: 2, dash: "dot" }, name: `Trigger (teto ${trig.teto}%)`
+    type: "scatter", mode: "lines+markers", x: mobRange, y: mobRange.map(m => triggerVal(trig, m)),
+    line: { color: "#d1242f", width: 1.5 }, marker: { symbol: "triangle-down", size: 8, color: "#d1242f" },
+    name: "Limite GS por MOB",
+    hovertemplate: "Limite MOB %{x}: %{y:.1f}%<extra></extra>"
+  });
+
+  traces.push({
+    type: "scatter", mode: "lines", x: [minMob, maxMob], y: [trig.teto, trig.teto],
+    line: { color: "#ff7a7a", width: 1.5, dash: "dash" },
+    name: `Teto GS = ${trig.teto}%`,
+    hovertemplate: `Teto GS = ${trig.teto}%<extra></extra>`
   });
 
   const breachX = [], breachY = [], breachLbl = [];
@@ -190,7 +200,13 @@ function buildChuveirinhoFig(asset, mesSelLabel, mesCompLabel) {
       xaxis: { title: "MOB (meses desde a originação)" },
       yaxis: { title: "OVER 30 (%)", automargin: true },
       legend: { orientation: "h", y: -0.15 },
-      hovermode: "closest"
+      hovermode: "closest",
+      annotations: [{
+        x: minMob, y: trig.teto, xref: "x", yref: "y",
+        text: `Teto GS = ${trig.teto}%`, showarrow: false,
+        xanchor: "left", yanchor: "bottom", xshift: 2, yshift: 3,
+        font: { color: "#ff7a7a", size: 11 }
+      }]
     }
   };
 }

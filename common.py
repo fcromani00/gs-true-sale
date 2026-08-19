@@ -41,6 +41,7 @@ def build_trigger_series(trigger_dict, teto, max_mob):
 def build_chuveirinho(df_vint, trigger_dict, teto, label_atual, label_comp, min_mob_breach=4):
     """df_vint precisa ter colunas: label, MOB, OVER_30 (já em %)."""
     max_mob = int(df_vint['MOB'].max())
+    min_mob = int(df_vint['MOB'].min())
     trigger_map = build_trigger_series(trigger_dict, teto, max_mob)
     df_vint = df_vint.copy()
     df_vint['trigger_val'] = df_vint['MOB'].map(trigger_map)
@@ -77,9 +78,17 @@ def build_chuveirinho(df_vint, trigger_dict, teto, label_atual, label_comp, min_
         ))
 
     fig.add_trace(go.Scatter(
-        x=list(trigger_map.keys()), y=list(trigger_map.values()), mode='lines',
-        line=dict(color='black', width=2, dash='dot'),
-        name=f'Trigger (teto {teto:g}%)'
+        x=list(trigger_map.keys()), y=list(trigger_map.values()), mode='lines+markers',
+        line=dict(color='#d1242f', width=1.5), marker=dict(symbol='triangle-down', size=8, color='#d1242f'),
+        name='Limite GS por MOB',
+        hovertemplate="Limite MOB %{x}: %{y:.1f}%<extra></extra>"
+    ))
+
+    fig.add_trace(go.Scatter(
+        x=[min_mob, max_mob], y=[teto, teto], mode='lines',
+        line=dict(color='#ff7a7a', width=1.5, dash='dash'),
+        name=f'Teto GS = {teto:g}%',
+        hovertemplate=f"Teto GS = {teto:g}%<extra></extra>"
     ))
 
     df_breach = df_vint[(df_vint['MOB'] >= min_mob_breach) & (df_vint['OVER_30'] > df_vint['trigger_val'])]
@@ -97,7 +106,13 @@ def build_chuveirinho(df_vint, trigger_dict, teto, label_atual, label_comp, min_
         xaxis_title='MOB (meses desde a originação)',
         yaxis_title='OVER 30 (%)',
         legend=dict(orientation='h', y=-0.15),
-        hovermode='closest'
+        hovermode='closest',
+        annotations=[dict(
+            x=min_mob, y=teto, xref='x', yref='y',
+            text=f'Teto GS = {teto:g}%', showarrow=False,
+            xanchor='left', yanchor='bottom', xshift=2, yshift=3,
+            font=dict(color='#ff7a7a', size=11)
+        )]
     )
     return fig, df_breach
 
