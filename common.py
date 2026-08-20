@@ -79,7 +79,8 @@ def build_chuveirinho(df_vint, trigger_dict, teto, label_atual, label_comp, min_
 
     fig.add_trace(go.Scatter(
         x=list(trigger_map.keys()), y=list(trigger_map.values()), mode='lines+markers',
-        line=dict(color='#d1242f', width=1.5), marker=dict(symbol='triangle-down', size=8, color='#d1242f'),
+        line=dict(color='#d1242f', width=2),
+        marker=dict(symbol='triangle-down', size=13, color='#d1242f', line=dict(color='white', width=1)),
         name='Limite GS por MOB',
         hovertemplate="Limite MOB %{x}: %{y:.1f}%<extra></extra>"
     ))

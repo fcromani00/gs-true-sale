@@ -47,17 +47,17 @@
 </div>
 <p class="caption">Veja qual safra está pior no gráfico, selecione o mês abaixo e entenda por quê.</p>
 
-<div id="chuveirinho" style="width:100%"></div>
-<p class="caption">MOB 2-3 fica fora do alerta de breach: base pequena faz o % oscilar muito (ruído).</p>
-<div id="breachBanner" class="banner"></div>
-
-<hr/>
-
 <div class="controls">
   <label>📌 Mês para analisar <select id="selMes"></select></label>
   <label><input type="checkbox" id="chkComparar"/>&nbsp;Comparar com outro mês</label>
   <label id="compBlock" style="display:none">🆚 Comparar com <select id="selComp"></select></label>
 </div>
+
+<div id="chuveirinho" style="width:100%"></div>
+<p class="caption">MOB 2-3 fica fora do alerta de breach: base pequena faz o % oscilar muito (ruído).</p>
+<div id="breachBanner" class="banner"></div>
+
+<hr/>
 
 <div class="cols">
   <div class="col">
@@ -167,7 +167,8 @@ function buildChuveirinhoFig(asset, mesSelLabel, mesCompLabel) {
   for (let m = 2; m <= maxMob; m++) mobRange.push(m);
   traces.push({
     type: "scatter", mode: "lines+markers", x: mobRange, y: mobRange.map(m => triggerVal(trig, m)),
-    line: { color: "#d1242f", width: 1.5 }, marker: { symbol: "triangle-down", size: 8, color: "#d1242f" },
+    line: { color: "#d1242f", width: 2 },
+    marker: { symbol: "triangle-down", size: 13, color: "#d1242f", line: { color: "white", width: 1 } },
     name: "Limite GS por MOB",
     hovertemplate: "Limite MOB %{x}: %{y:.1f}%<extra></extra>"
   });
